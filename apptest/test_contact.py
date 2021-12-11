@@ -2,6 +2,9 @@
 __author__ = 'hogwarts_xixi'
 """
 # appium-python-client
+from time import sleep
+
+import pytest
 from appium import webdriver
 from appium.webdriver.common.mobileby import MobileBy
 from faker import Faker
@@ -140,3 +143,48 @@ class TestContact:
         self.driver.find_element(MobileBy.XPATH, "//*[contains(@text,'次外出')]").click()
         # 验证点：提示【外出打卡成功】
         self.driver.find_element(MobileBy.XPATH, "//*[@text='外出打卡成功']")
+
+    def test_delete_contact(self):
+        name = "倪"
+        # 打开【企业微信】应用
+        # 进入【通讯录】页面
+        self.driver.find_element(MobileBy.XPATH, "//*[@text='通讯录']").click()
+        # 点击右上角搜索图标，进入搜索页面
+        # following-sibling:: 获取当前节点的后面的兄弟结点
+        self.driver.find_element(MobileBy.XPATH,
+                                 "//*[@text='测试公司']/../../../following-sibling::android.widget.LinearLayout/*[1]").click()
+        # 输入搜索内容（已添加的联系人姓名）
+        self.driver.find_element(MobileBy.XPATH, "//*[@text='搜索']").send_keys(name)
+        sleep(2)
+        # 有两种情况
+        # 第一种情况：提示:  无搜索结果
+        if "无搜索结果" in self.driver.page_source:
+            pytest.xfail(f"无搜索结果：{name}")
+
+        # 第二种情况：有搜索结果
+        # 判断联系人的个数
+        # find_elements 会返回一个元素列表[element1,element2,....]列表里是 WebElement类型的元素
+        elements = self.driver.find_elements(MobileBy.XPATH, "//*[@text='联系人']/../following-sibling::*")
+        num = len(elements)
+        print(f"删除前搜索出来的联系人个数：{num}")
+
+        # 点击展示的第一个联系人（有可能多个），进入联系人详情页面
+        # 1,3,5 奇数对应的是名字，偶数对应的是公司
+        element = \
+        self.driver.find_elements(MobileBy.XPATH, "//*[@text='联系人']/../following-sibling::*//android.widget.TextView")[
+            0]
+        element.click()
+        # 点击右上角三个点，进入个人信息页面
+        self.driver.find_element(MobileBy.XPATH, "//*[@text='个人信息']/../../../../following-sibling::*[1]").click()
+        # 点击【编辑成员】进入编辑成员页面
+        self.driver.find_element(MobileBy.XPATH, "//*[@text='编辑成员']").click()
+        # 点击【删除成员】并确定
+        self.swipe_find("删除成员").click()
+        self.swipe_find("确定").click()
+        sleep(2)
+        # 验证点：搜索结果页面联系人个数少一个
+        elements_after = self.driver.find_elements(MobileBy.XPATH, "//*[@text='联系人']/../following-sibling::*")
+
+        # 找到的元素个数，result 代表删除之后的个数
+        result = len(elements_after)
+        assert result == num - 1
